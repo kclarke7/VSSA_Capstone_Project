@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import "./App.css";
+import { loadJSON, saveJSON } from "./stroage";
 
+// ---------- helpers ----------
 function formatTime(totalSeconds) {
 const m = Math.floor(totalSeconds / 60);
 const s = totalSeconds % 60;
 return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function shuffleArray(arr) {
+const a = [...arr];
+for (let i = a.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[a[i], a[j]] = [a[j], a[i]];
+}
+return a;
 }
 
 export default function App() {
@@ -22,131 +34,272 @@ return (mode === "study" ? studyMinutes : breakMinutes) * 60;
 const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
 const [isRunning, setIsRunning] = useState(false);
 
-// If user changes mode or preset while NOT running, update the clock
+// Keep timer display in sync when user changes mode/minutes (and timer is NOT running)
 useEffect(() => {
 if (!isRunning) setSecondsLeft(initialSeconds);
 }, [initialSeconds, isRunning]);
 
-// Countdown
+// Timer ticking
 useEffect(() => {
 if (!isRunning) return;
 
-const id = setInterval(() => {
-setSecondsLeft((prev) => {
-if (prev <= 1) return 0;
-return prev - 1;
-});
+const t = setInterval(() => {
+setSecondsLeft((prev) => Math.max(0, prev - 1));
 }, 1000);
 
-return () => clearInterval(id);
+return () => clearInterval(t);
 }, [isRunning]);
 
-// When timer hits 0, stop
+// When timer hits 0: switch mode + stop (simple behavior)
 useEffect(() => {
-if (secondsLeft === 0 && isRunning) {
+if (!isRunning) return;
+if (secondsLeft !== 0) return;
+
 setIsRunning(false);
-}
+setMode((prev) => (prev === "study" ? "break" : "study"));
 }, [secondsLeft, isRunning]);
 
-const title = mode === "study" ? "Study Session" : "Break";
-const done = secondsLeft === 0;
-
-function start() {
-if (secondsLeft === 0) setSecondsLeft(initialSeconds);
-setIsRunning(true);
-}
-
-function pause() {
+function handleMode(newMode) {
+setMode(newMode);
 setIsRunning(false);
 }
 
-function reset() {
+function handleReset() {
 setIsRunning(false);
 setSecondsLeft(initialSeconds);
+setActiveQuestionId(null);
+setSessionQueue([]);
 }
 
-function switchMode(newMode) {
-setIsRunning(false);
-setMode(newMode);
-// secondsLeft will update via initialSeconds effect
+// -------------------------------
+// PART 2: Questions List + Delete
+// -------------------------------
+const [questions, setQuestions] = useState(() => loadJSON("vssa_questions", []));
+const [questionText, setQuestionText] = useState("");
+
+// Save to localStorage anytime questions change
+useEffect(() => {
+saveJSON("vssa_questions", questions);
+}, [questions]);
+
+function addQuestion() {
+const q = questionText.trim();
+if (!q) return;
+
+setQuestions((prev) => [{ id: crypto.randomUUID(), text: q }, ...prev]);
+setQuestionText("");
 }
+
+function deleteQuestion(id) {
+setQuestions((prev) => prev.filter((q) => q.id !== id));
+}
+
+function importQuestionsFromText(fileText) {
+const lines = String(fileText)
+.split(/\r?\n/)
+.map((l) => l.trim())
+.filter(Boolean);
+
+// prevent duplicates (case-insensitive)
+const existing = new Set(questions.map((q) => q.text.toLowerCase()));
+
+const newOnes = lines
+.filter((line) => !existing.has(line.toLowerCase()))
+.map((line) => ({ id: crypto.randomUUID(), text: line }));
+
+if (newOnes.length) {
+setQuestions((prev) => [...newOnes, ...prev]);
+}
+}
+
+// ONE upload handler (keep only this one)
+async function handleFileUpload(e) {
+const file = e.target.files?.[0];
+if (!file) return;
+
+const text = await file.text();
+
+// If CSV, grab first column as the question text
+if (file.name.toLowerCase().endsWith(".csv")) {
+const lines = text
+.split(/\r?\n/)
+.map((l) => l.trim())
+.filter(Boolean);
+
+const firstCol = lines
+.map((line) => line.split(",")[0]?.replace(/^"|"$/g, "").trim())
+.filter(Boolean);
+
+importQuestionsFromText(firstCol.join("\n"));
+} else {
+// Normal .txt
+importQuestionsFromText(text);
+}
+
+// reset so you can upload same file again if needed
+e.target.value = "";
+}
+
+// -----------------------------------------
+// PART 2: Random / rotating question on Start
+// -----------------------------------------
+const [activeQuestionId, setActiveQuestionId] = useState(null);
+const [sessionQueue, setSessionQueue] = useState([]); // shuffled IDs for this study session
+
+// If active question was deleted, clear it
+useEffect(() => {
+if (!activeQuestionId) return;
+const stillExists = questions.some((q) => q.id === activeQuestionId);
+if (!stillExists) setActiveQuestionId(null);
+}, [questions, activeQuestionId]);
+
+const activeQuestion = useMemo(() => {
+if (!activeQuestionId) return null;
+return questions.find((q) => q.id === activeQuestionId) || null;
+}, [questions, activeQuestionId]);
+
+function startStudyQuestionSession() {
+if (mode !== "study") return;
+if (questions.length === 0) {
+setActiveQuestionId(null);
+setSessionQueue([]);
+return;
+}
+
+// Rotate order each session: shuffle IDs when study starts
+const ids = shuffleArray(questions.map((q) => q.id));
+setSessionQueue(ids);
+setActiveQuestionId(ids[0] ?? null);
+}
+
+function toggleStartPause() {
+// If starting a STUDY session, pick a question
+if (!isRunning) {
+if (mode === "study") startStudyQuestionSession();
+}
+setIsRunning((prev) => !prev);
+}
+
+// -------------------------------
+// UI
+// -------------------------------
+const presets = mode === "study" ? STUDY_PRESETS : BREAK_PRESETS;
 
 return (
-<div style={{ fontFamily: "system-ui, Arial", padding: "2rem", maxWidth: 720, margin: "0 auto" }}>
+<div className="app">
 <h1>VSSA</h1>
 
-<div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-<button onClick={() => switchMode("study")} disabled={mode === "study"}>
+<div className="row">
+<button onClick={() => handleMode("study")} className={mode === "study" ? "active" : ""}>
 Study
 </button>
-<button onClick={() => switchMode("break")} disabled={mode === "break"}>
+<button onClick={() => handleMode("break")} className={mode === "break" ? "active" : ""}>
 Break
 </button>
 </div>
 
-<h2 style={{ marginTop: 0 }}>{title}</h2>
+<div className="timer">{formatTime(secondsLeft)}</div>
 
-<div style={{ fontSize: "4rem", fontWeight: 700, margin: "1rem 0" }}>
-{formatTime(secondsLeft)}
+<div className="row">
+<button onClick={toggleStartPause}>{isRunning ? "Pause" : "Start"}</button>
+<button onClick={handleReset}>Reset</button>
 </div>
 
-{done && (
-<p style={{ marginTop: 0 }}>
-✅ Timer finished. Hit <b>Start</b> to run again or switch modes.
-</p>
-)}
-
-<div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-{!isRunning ? (
-<button onClick={start}>Start</button>
-) : (
-<button onClick={pause}>Pause</button>
-)}
-<button onClick={reset}>Reset</button>
-</div>
-
-<div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+<div className="row" style={{ gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
 <div>
-<h3>Study Preset</h3>
-<div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+<div style={{ fontSize: 12, opacity: 0.8 }}>Study minutes</div>
+<select
+value={studyMinutes}
+onChange={(e) => {
+setStudyMinutes(Number(e.target.value));
+setIsRunning(false);
+}}
+>
 {STUDY_PRESETS.map((m) => (
-<button
-key={m}
-onClick={() => {
-setStudyMinutes(m);
-if (mode === "study" && !isRunning) setSecondsLeft(m * 60);
-}}
-disabled={mode === "study" && studyMinutes === m}
->
-{m} min
-</button>
+<option key={m} value={m}>
+{m}
+</option>
 ))}
-</div>
+</select>
 </div>
 
 <div>
-<h3>Break Preset</h3>
-<div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-{BREAK_PRESETS.map((m) => (
-<button
-key={m}
-onClick={() => {
-setBreakMinutes(m);
-if (mode === "break" && !isRunning) setSecondsLeft(m * 60);
+<div style={{ fontSize: 12, opacity: 0.8 }}>Break minutes</div>
+<select
+value={breakMinutes}
+onChange={(e) => {
+setBreakMinutes(Number(e.target.value));
+setIsRunning(false);
 }}
-disabled={mode === "break" && breakMinutes === m}
 >
-{m} min
-</button>
+{BREAK_PRESETS.map((m) => (
+<option key={m} value={m}>
+{m}
+</option>
 ))}
-</div>
+</select>
 </div>
 </div>
 
-<hr style={{ margin: "2rem 0" }} />
-<p style={{ opacity: 0.7, margin: 0 }}>
-Tip: keep your terminal running (<code>npm run dev</code>) so the page auto-refreshes when you save.
-</p>
+<hr style={{ width: "60%", margin: "24px auto", opacity: 0.3 }} />
+
+<h2>Study Questions</h2>
+
+{/* Show the random question during Study */}
+{mode === "study" && isRunning && activeQuestion && (
+<div style={{ maxWidth: 520, margin: "0 auto 14px auto", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)" }}>
+<div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Current question</div>
+<div style={{ fontSize: 16, fontWeight: 600 }}>{activeQuestion.text}</div>
+</div>
+)}
+
+<div className="row" style={{ gap: 10 }}>
+<input
+style={{ minWidth: 260 }}
+value={questionText}
+onChange={(e) => setQuestionText(e.target.value)}
+placeholder="Type a study question..."
+/>
+<button onClick={addQuestion}>Add</button>
+</div>
+
+<div style={{ marginTop: 10 }}>
+<div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>Upload questions (.txt or .csv)</div>
+<input type="file" accept=".txt,.csv" onChange={handleFileUpload} />
+<div style={{ fontSize: 11, opacity: 0.65, marginTop: 6 }}>
+CSV uses the first column. TXT = one question per line.
+</div>
+</div>
+
+{/* Questions list */}
+<div style={{ maxWidth: 620, margin: "16px auto 0 auto", textAlign: "left" }}>
+{questions.length === 0 ? (
+<div style={{ opacity: 0.7, fontSize: 13 }}>No questions yet. Add one or upload a file.</div>
+) : (
+<ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+{questions.map((q) => (
+<li
+key={q.id}
+style={{
+display: "flex",
+gap: 10,
+alignItems: "center",
+padding: "10px 12px",
+borderRadius: 8,
+border: "1px solid rgba(255,255,255,0.12)",
+marginBottom: 8,
+background: q.id === activeQuestionId ? "rgba(255,255,255,0.08)" : "transparent",
+}}
+>
+<div style={{ flex: 1 }}>{q.text}</div>
+<button onClick={() => deleteQuestion(q.id)} style={{ opacity: 0.9 }}>
+Delete
+</button>
+</li>
+))}
+</ul>
+)}
+</div>
 </div>
 );
 }
