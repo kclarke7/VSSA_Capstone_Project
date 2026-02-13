@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { loadJSON, saveJSON } from "./stroage";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+
 
 // ---------- helpers ----------
 function formatTime(totalSeconds) {
@@ -19,6 +22,25 @@ return a;
 }
 
 export default function App() {
+
+const [user, setUser] = useState(localStorage.getItem("token"));
+const [showSignup, setShowSignup] = useState(false);
+
+if (!user) {
+return (
+<div style={{ padding: 24 }}>
+{showSignup ? <Signup /> : <Login setUser={setUser} />}
+<button
+onClick={() => setShowSignup((p) => !p)}
+style={{ marginTop: 12 }}
+>
+{showSignup ? "Back to Login" : "Create an account"}
+</button>
+</div>
+);
+}
+
+
 // durations in minutes
 const STUDY_PRESETS = useMemo(() => [25, 50], []);
 const BREAK_PRESETS = useMemo(() => [5, 10], []);
