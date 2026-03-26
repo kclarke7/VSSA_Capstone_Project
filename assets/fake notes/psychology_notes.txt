@@ -1,0 +1,21 @@
+Cognitive Psychology Notes
+
+Memory:
+- Encoding: The process of converting information into a form that can be stored.
+- Storage: Maintaining information over time.
+- Retrieval: Accessing stored information when needed.
+
+Types of Memory:
+- Sensory Memory: Very brief storage (milliseconds to seconds)
+- Short-Term Memory: Holds about 7±2 items for ~20 seconds
+- Long-Term Memory: Potentially unlimited capacity
+
+Forgetting:
+- Decay Theory: Memory fades over time
+- Interference Theory:
+  - Proactive: Old info interferes with new
+  - Retroactive: New info interferes with old
+
+Learning:
+- Classical Conditioning: Associating two stimuli (Pavlov’s dogs)
+- Operant Conditioning: Learning through rewards and punishments (Skinner)

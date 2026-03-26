@@ -1,0 +1,22 @@
+Algebra & Functions
+
+Linear Equations:
+- y = mx + b
+- m = slope
+- b = y-intercept
+
+Quadratic Equations:
+- ax^2 + bx + c = 0
+- Quadratic Formula:
+  x = (-b ± sqrt(b^2 - 4ac)) / (2a)
+
+Derivatives:
+- Rate of change
+- Power Rule:
+  d/dx (x^n) = n*x^(n-1)
+
+Integrals:
+- Area under the curve
+
+Limits:
+- Describes behavior as x approaches a value
