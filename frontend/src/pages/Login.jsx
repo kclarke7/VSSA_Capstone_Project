@@ -1,34 +1,63 @@
 import { useState } from "react";
-console.log("LOGIN FILE LOADED");
+import { login } from "../api";
 
-export default function Login({setUser}) {
-const [email, setEmail] = useState("");
-const [password, setPassword] = useState("");
+export default function Login({ setUser }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-async function handleLogin(e) {
-e.preventDefault();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-const res = await fetch("http://localhost:3000/auth/login", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ email, password }),
-});
+  async function handleLogin(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-const data = await res.json();
-if (!res.ok) return alert(data.message || "Login failed");
+    try {
+      const data = await login(email, password); // from api.js
 
-// Save login (token/session)
-localStorage.setItem("token", data.token);
+      // api.js already saved token to localStorage (if you used my updated api.js)
+      // but we still set state so App rerenders immediately
+      if (!data?.token) {
+        throw new Error("No token returned from server.");
+      }
 
-setUser(data.token);
-}
+      setUser(data.token);
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-return (
-<form onSubmit={handleLogin}>
-<h2>Log In</h2>
-<input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email" />
-<input value={password} onChange={(e)=>setPassword(e.target.value)} type="password" placeholder="Password" />
-<button type="submit">Log In</button>
-</form>
-);
+  return (
+    <form onSubmit={handleLogin} style={{ maxWidth: 360 }}>
+      <h2>Log In</h2>
+
+      <input
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+        autoComplete="email"
+      />
+
+      <input
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        type="password"
+        placeholder="Password"
+        autoComplete="current-password"
+      />
+
+      <button type="submit" disabled={loading || !email || !password}>
+        {loading ? "Logging in..." : "Log In"}
+      </button>
+
+      {error && (
+        <div style={{ marginTop: 10, color: "salmon", fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+    </form>
+  );
 }

@@ -1,36 +1,69 @@
 import { useState } from "react";
+import { register } from "../api";
 
-export default function Signup() {
-const [email, setEmail] = useState("");
-const [password, setPassword] = useState("");
+export default function Signup({ setShowSignup }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-async function handleSignup(e) {
-e.preventDefault();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-const res = await fetch("http://localhost:3000/auth/register", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ email, password }),
-});
+  async function handleSignup(e) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
 
-const data = await res.json();
-if (!res.ok) return alert(data.message || "Signup failed");
+    try {
+      await register(email, password); // from api.js
+      setSuccess("Account created! You can now log in.");
 
-alert("Account created. Now log in.");
-window.location.href = "/login";
-}
+      // Switch back to login screen if parent provided function
+      if (setShowSignup) {
+        setTimeout(() => setShowSignup(false), 1000);
+      }
+    } catch (err) {
+      setError(err.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-return (
-<form onSubmit={handleSignup}>
-<h2>Create Account</h2>
-<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-<input
-value={password}
-onChange={(e) => setPassword(e.target.value)}
-type="password"
-placeholder="Password"
-/>
-<button type="submit">Sign Up</button>
-</form>
-);
+  return (
+    <form onSubmit={handleSignup} style={{ maxWidth: 360 }}>
+      <h2>Create Account</h2>
+
+      <input
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+        autoComplete="email"
+      />
+
+      <input
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        type="password"
+        placeholder="Password"
+        autoComplete="new-password"
+      />
+
+      <button type="submit" disabled={loading || !email || !password}>
+        {loading ? "Creating..." : "Sign Up"}
+      </button>
+
+      {error && (
+        <div style={{ marginTop: 10, color: "salmon", fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div style={{ marginTop: 10, color: "lightgreen", fontSize: 13 }}>
+          {success}
+        </div>
+      )}
+    </form>
+  );
 }
