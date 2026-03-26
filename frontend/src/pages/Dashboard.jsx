@@ -1,5 +1,5 @@
 import "../styles/dashboard.css";
-
+import Study from "./Study";
 import { useRef, useState } from "react";
 import Notes from "./Notes";
 import { createNote } from "../api";
@@ -169,6 +169,8 @@ export default function Dashboard({ onLogout }) {
         <section className="vssa__content">
   {activePage === "Notes" ? (
     <Notes refreshKey={notesRefreshKey} />
+  ) : activePage === "Study" ? (
+    <Study />
   ) : (
     <div className="vssa__grid">
       {/* Big left chart */}
@@ -191,7 +193,7 @@ export default function Dashboard({ onLogout }) {
         </div>
       </div>
 
-      {/* Encouragement spans left column */}
+      {/* Encouragement */}
       <div className="card card--wide">
         <div className="card__header">
           <h2 className="card__title">Encouragement</h2>

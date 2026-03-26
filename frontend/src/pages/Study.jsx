@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadJSON, saveJSON } from "../storage";
+import "../styles/study.css";
 
-// ---------- helpers ----------
 function formatTime(totalSeconds) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
@@ -18,8 +18,9 @@ function shuffleArray(arr) {
 }
 
 export default function Study() {
+  const [studyMode, setStudyMode] = useState("timer");
+  const [flipped, setFlipped] = useState(false);
 
-  // durations in minutes
   const STUDY_PRESETS = useMemo(() => [25, 50], []);
   const BREAK_PRESETS = useMemo(() => [5, 10], []);
 
@@ -34,12 +35,21 @@ export default function Study() {
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(false);
 
-  // Keep timer display synced
-  useEffect(() => {
-    if (!isRunning) setSecondsLeft(initialSeconds);
-  }, [initialSeconds, isRunning]);
+  const [questions, setQuestions] = useState(() =>
+    loadJSON("vssa_questions", [])
+  );
+  const [questionText, setQuestionText] = useState("");
+  const [activeQuestionId, setActiveQuestionId] = useState(null);
+  const [sessionQueue, setSessionQueue] = useState([]);
 
-  // Timer ticking
+  useEffect(() => {
+    saveJSON("vssa_questions", questions);
+  }, [questions]);
+
+  useEffect(() => {
+      setSecondsLeft(initialSeconds);
+    }, [initialSeconds]);
+
   useEffect(() => {
     if (!isRunning) return;
 
@@ -50,14 +60,23 @@ export default function Study() {
     return () => clearInterval(t);
   }, [isRunning]);
 
-  // Switch mode when timer hits 0
   useEffect(() => {
-    if (!isRunning) return;
-    if (secondsLeft !== 0) return;
+    if (!isRunning || secondsLeft !== 0) return;
 
     setIsRunning(false);
     setMode((prev) => (prev === "study" ? "break" : "study"));
   }, [secondsLeft, isRunning]);
+
+  useEffect(() => {
+    if (!activeQuestionId) return;
+    const stillExists = questions.some((q) => q.id === activeQuestionId);
+    if (!stillExists) setActiveQuestionId(null);
+  }, [questions, activeQuestionId]);
+
+  const activeQuestion = useMemo(() => {
+    if (!activeQuestionId) return null;
+    return questions.find((q) => q.id === activeQuestionId) || null;
+  }, [questions, activeQuestionId]);
 
   function handleMode(newMode) {
     setMode(newMode);
@@ -71,28 +90,11 @@ export default function Study() {
     setSessionQueue([]);
   }
 
-  // -------------------------------
-  // Questions
-  // -------------------------------
-
-  const [questions, setQuestions] = useState(() =>
-    loadJSON("vssa_questions", [])
-  );
-  const [questionText, setQuestionText] = useState("");
-
-  useEffect(() => {
-    saveJSON("vssa_questions", questions);
-  }, [questions]);
-
   function addQuestion() {
     const q = questionText.trim();
     if (!q) return;
 
-    setQuestions((prev) => [
-      { id: crypto.randomUUID(), text: q },
-      ...prev,
-    ]);
-
+    setQuestions((prev) => [{ id: crypto.randomUUID(), text: q }, ...prev]);
     setQuestionText("");
   }
 
@@ -106,9 +108,7 @@ export default function Study() {
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const existing = new Set(
-      questions.map((q) => q.text.toLowerCase())
-    );
+    const existing = new Set(questions.map((q) => q.text.toLowerCase()));
 
     const newOnes = lines
       .filter((line) => !existing.has(line.toLowerCase()))
@@ -135,9 +135,7 @@ export default function Study() {
         .filter(Boolean);
 
       const firstCol = lines
-        .map((line) =>
-          line.split(",")[0]?.replace(/^"|"$/g, "").trim()
-        )
+        .map((line) => line.split(",")[0]?.replace(/^"|"$/g, "").trim())
         .filter(Boolean);
 
       importQuestionsFromText(firstCol.join("\n"));
@@ -147,28 +145,6 @@ export default function Study() {
 
     e.target.value = "";
   }
-
-  // -----------------------------------------
-  // Random question per session
-  // -----------------------------------------
-
-  const [activeQuestionId, setActiveQuestionId] = useState(null);
-  const [sessionQueue, setSessionQueue] = useState([]);
-
-  useEffect(() => {
-    if (!activeQuestionId) return;
-    const stillExists = questions.some(
-      (q) => q.id === activeQuestionId
-    );
-    if (!stillExists) setActiveQuestionId(null);
-  }, [questions, activeQuestionId]);
-
-  const activeQuestion = useMemo(() => {
-    if (!activeQuestionId) return null;
-    return (
-      questions.find((q) => q.id === activeQuestionId) || null
-    );
-  }, [questions, activeQuestionId]);
 
   function startStudyQuestionSession() {
     if (mode !== "study") return;
@@ -184,89 +160,203 @@ export default function Study() {
   }
 
   function toggleStartPause() {
-    if (!isRunning) {
-      if (mode === "study") startStudyQuestionSession();
+    if (!isRunning && mode === "study") {
+      startStudyQuestionSession();
     }
     setIsRunning((prev) => !prev);
   }
 
-  // -------------------------------
-  // UI
-  // -------------------------------
-
-  const presets = mode === "study" ? STUDY_PRESETS : BREAK_PRESETS;
-
   return (
-    <div className="app">
-      <h1>Study Session</h1>
+    <div className="study-page">
+      <div className="study-header">
+        <h1 className="study-title">Study Session</h1>
+        <p className="study-subtitle">
+          Focus, review your questions, and stay on track.
+        </p>
+      </div>
 
-      <div className="row">
+      <div className="study-tabs">
         <button
-          onClick={() => handleMode("study")}
-          className={mode === "study" ? "active" : ""}
+          className={studyMode === "timer" ? "active" : ""}
+          onClick={() => setStudyMode("timer")}
         >
-          Study
+          Timer
         </button>
+
         <button
-          onClick={() => handleMode("break")}
-          className={mode === "break" ? "active" : ""}
+          className={studyMode === "flashcards" ? "active" : ""}
+          onClick={() => setStudyMode("flashcards")}
         >
-          Break
+          Flashcards
+        </button>
+
+        <button
+          className={studyMode === "practice" ? "active" : ""}
+          onClick={() => setStudyMode("practice")}
+        >
+          Practice Quiz
         </button>
       </div>
 
-      <div className="timer">{formatTime(secondsLeft)}</div>
+      {studyMode === "timer" && (
+        <div className="study-grid">
+          <div className="study-card study-card--timer">
+            <div className="study-mode-toggle">
+              <button
+                onClick={() => handleMode("study")}
+                className={mode === "study" ? "active" : ""}
+              >
+                Study
+              </button>
+              <button
+                onClick={() => handleMode("break")}
+                className={mode === "break" ? "active" : ""}
+              >
+                Break
+              </button>
+            </div>
 
-      <div className="row">
-        <button onClick={toggleStartPause}>
-          {isRunning ? "Pause" : "Start"}
-        </button>
-        <button onClick={handleReset}>Reset</button>
-      </div>
+            <div className="study-timer">{formatTime(secondsLeft)}</div>
 
-      {/* Question during session */}
-      {mode === "study" && isRunning && activeQuestion && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ opacity: 0.7, fontSize: 12 }}>
-            Current question
+            <div className="study-actions">
+              <button onClick={toggleStartPause}>
+                {isRunning ? "Pause" : "Start"}
+              </button>
+              <button onClick={handleReset} className="secondary">
+                Reset
+              </button>
+            </div>
+
+            <div className="study-selects">
+              <div>
+                <label>Study minutes</label>
+                <select
+                  value={studyMinutes}
+                  onChange={(e) => {
+                    setStudyMinutes(Number(e.target.value));
+                    setIsRunning(false);
+                  }}
+                >
+                  {STUDY_PRESETS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label>Break minutes</label>
+                <select
+                  value={breakMinutes}
+                  onChange={(e) => {
+                    setBreakMinutes(Number(e.target.value));
+                    setIsRunning(false);
+                  }}
+                >
+                  {BREAK_PRESETS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {mode === "study" && isRunning && activeQuestion && (
+              <div className="study-current-question">
+                <div className="study-current-label">Current question</div>
+                <div className="study-current-text">{activeQuestion.text}</div>
+              </div>
+            )}
           </div>
-          <div style={{ fontWeight: 600 }}>
-            {activeQuestion.text}
+
+          <div className="study-card">
+            <h2 className="study-section-title">Question Bank</h2>
+
+            <div className="study-question-input">
+              <input
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                placeholder="Type a study question..."
+              />
+              <button onClick={addQuestion}>Add</button>
+            </div>
+
+            <div className="study-upload">
+              <label>Upload questions (.txt or .csv)</label>
+              <input type="file" accept=".txt,.csv" onChange={handleFileUpload} />
+              <small>CSV uses the first column. TXT uses one question per line.</small>
+            </div>
+
+            <div className="study-question-list">
+              {questions.length === 0 ? (
+                <div className="study-empty">
+                  No questions yet. Add one or upload a file.
+                </div>
+              ) : (
+                questions.map((q) => (
+                  <div
+                    key={q.id}
+                    className={`study-question-item ${
+                      q.id === activeQuestionId ? "highlighted" : ""
+                    }`}
+                  >
+                    <span>{q.text}</span>
+                    <button
+                      className="delete-btn"
+                      onClick={() => deleteQuestion(q.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      <hr style={{ margin: "24px 0" }} />
+      {studyMode === "flashcards" && (
+        <div className="study-card">
+          <h2>Flashcards</h2>
 
-      <h2>Study Questions</h2>
+          <div
+            className={`flashcard ${flipped ? "flipped" : ""}`}
+            onClick={() => setFlipped(!flipped)}
+          >
+            <div className="flashcard-inner">
+              <div className="flashcard-front">
+                What is a process in operating systems?
+                <p className="flashcard-hint">Click to flip</p>
+              </div>
 
-      <div className="row" style={{ gap: 10 }}>
-        <input
-          value={questionText}
-          onChange={(e) => setQuestionText(e.target.value)}
-          placeholder="Type a study question..."
-        />
-        <button onClick={addQuestion}>Add</button>
-      </div>
+              <div className="flashcard-back">
+                A process is a program that is currently executing in memory.
+              </div>
+            </div>
+          </div>
 
-      <div style={{ marginTop: 10 }}>
-        <input
-          type="file"
-          accept=".txt,.csv"
-          onChange={handleFileUpload}
-        />
-      </div>
+          <p className="flashcard-info">
+            Flashcards will be automatically generated from uploaded notes.
+          </p>
+        </div>
+      )}
 
-      <ul style={{ marginTop: 16 }}>
-        {questions.map((q) => (
-          <li key={q.id}>
-            {q.text}
-            <button onClick={() => deleteQuestion(q.id)}>
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+      {studyMode === "practice" && (
+        <div className="study-card">
+          <h2>Practice Questions</h2>
+
+          <div className="practice-question">
+            <p>Which scheduling algorithm always chooses the shortest job first?</p>
+            <button>Show Answer</button>
+          </div>
+
+          <p style={{ marginTop: 12, opacity: 0.7 }}>
+            Questions will be generated automatically from uploaded notes.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

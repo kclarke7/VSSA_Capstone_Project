@@ -2,38 +2,51 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import { ping } from "./api";
 import Dashboard from "./pages/Dashboard";
+import { ping } from "./api";
+import "./styles/auth.css";
 
 export default function App() {
-    const [user, setUser] = useState(localStorage.getItem("token"));
-    const [showSignup, setShowSignup] = useState(false);
+  const [user, setUser] = useState(localStorage.getItem("token"));
+  const [showSignup, setShowSignup] = useState(false);
+
+  useEffect(() => {
+    ping()
+      .then((res) => console.log("Backend:", res))
+      .catch((err) => console.error("Backend error:", err));
+  }, []);
+
+  if (!user) {
+    return (
+      <div className="auth-page">
   
-    useEffect(() => {
-      ping()
-        .then((res) => console.log("Backend:", res))
-        .catch((err) => console.error("Backend error:", err));
-    }, []);
+        {/* animated background grid */}
+        <div className="auth-grid" />
   
-    if (!user) {
-      return (
-        <div style={{ padding: 24 }}>
+        <div className="auth-card">
           {showSignup ? (
             <Signup setShowSignup={setShowSignup} />
           ) : (
             <Login setUser={setUser} />
           )}
-          <button onClick={() => setShowSignup((p) => !p)} style={{ marginTop: 12 }}>
+  
+          <button
+            className="auth-switch-btn"
+            onClick={() => setShowSignup((p) => !p)}
+            type="button"
+          >
             {showSignup ? "Back to Login" : "Create an account"}
           </button>
         </div>
-      );
-    }
   
-    function handleLogout() {
-      localStorage.removeItem("token");
-      setUser(null);
-    }
-  
-    return <Dashboard onLogout={handleLogout} />;
+      </div>
+    );
   }
+
+  function handleLogout() {
+    localStorage.removeItem("token");
+    setUser(null);
+  }
+
+  return <Dashboard onLogout={handleLogout} />;
+}

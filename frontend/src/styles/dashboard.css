@@ -195,6 +195,22 @@
     color: #0f172a;
     letter-spacing: -0.4px;
   }
+  /*Delete Button*/
+  .delete-btn {
+    border: 1px solid rgba(0,0,0,0.15);
+    background: transparent;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  /* hover state */
+  .delete-btn:hover {
+    background: #ff4d4f;
+    border-color: #ff4d4f;
+    color: white;
+  }
   
   /* Charts */
   .card__chart {

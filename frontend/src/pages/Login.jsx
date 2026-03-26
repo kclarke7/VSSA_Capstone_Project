@@ -1,63 +1,47 @@
 import { useState } from "react";
 import { login } from "../api";
+import "../styles/auth.css";
 
 export default function Login({ setUser }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
   async function handleLogin(e) {
     e.preventDefault();
-    setError("");
-    setLoading(true);
 
     try {
-      const data = await login(email, password); // from api.js
-
-      // api.js already saved token to localStorage (if you used my updated api.js)
-      // but we still set state so App rerenders immediately
-      if (!data?.token) {
-        throw new Error("No token returned from server.");
-      }
-
+      const data = await login(email, password);
       setUser(data.token);
     } catch (err) {
-      setError(err.message || "Login failed");
-    } finally {
-      setLoading(false);
+      alert(err.message || "Login failed");
     }
   }
 
   return (
-    <form onSubmit={handleLogin} style={{ maxWidth: 360 }}>
-      <h2>Log In</h2>
+    <>
+      <h1 className="auth-title">VSSA</h1>
+      <p className="auth-subtitle">Virtual Smart Study Assistant</p>
 
-      <input
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
-        autoComplete="email"
-      />
+      <form onSubmit={handleLogin} className="auth-form">
+        <input
+          className="auth-input"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+        />
 
-      <input
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        type="password"
-        placeholder="Password"
-        autoComplete="current-password"
-      />
+        <input
+          className="auth-input"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+        />
 
-      <button type="submit" disabled={loading || !email || !password}>
-        {loading ? "Logging in..." : "Log In"}
-      </button>
-
-      {error && (
-        <div style={{ marginTop: 10, color: "salmon", fontSize: 13 }}>
-          {error}
-        </div>
-      )}
-    </form>
+        <button className="auth-button" type="submit">
+          Log In
+        </button>
+      </form>
+    </>
   );
 }

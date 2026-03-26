@@ -82,17 +82,11 @@ export default function Notes({ refreshKey = 0 }) {
               </div>
 
               <button
-                onClick={() => handleDelete(n.id)}
-                style={{
-                  border: "1px solid rgba(0,0,0,0.15)",
-                  background: "transparent",
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                }}
-              >
-                Delete
-              </button>
+  className="delete-btn"
+  onClick={() => handleDelete(n.id)}
+>
+  Delete
+</button>
             </div>
           ))}
         </div>
