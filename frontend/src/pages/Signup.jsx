@@ -3,10 +3,10 @@ import { register } from "../api";
 import "../styles/auth.css";
 
 const avatarOptions = [
-  "/avatars/avatar1.png",
-  "/avatars/avatar2.png",
-  "/avatars/avatar3.png",
-  "/avatars/avatar4.png",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Kyla1",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Kyla2",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Kyla3",
+  "https://api.dicebear.com/7.x/adventurer/png?seed=Kyla4",
 ];
 
 export default function Signup({ setShowSignup }) {

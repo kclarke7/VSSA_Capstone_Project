@@ -1,89 +1,37 @@
-// src/api.js
-const API_URL = "http://localhost:3000";
+const API_BASE = "http://localhost:3000";
 
-/**
- * Low-level request helper:
- * - Adds JSON headers
- * - Adds Authorization header if token exists
- * - Throws useful errors when backend responds with a failure
- */
-async function request(path, { method = "GET", body, token } = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-  const authToken = token ?? localStorage.getItem("token");
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
+export async function register(userData) {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
   });
 
-  // Try to parse JSON either way (many APIs return JSON for errors too)
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    // If server returned non-JSON
-    data = null;
-  }
+  const data = await res.json();
 
   if (!res.ok) {
-    const msg =
-      (data && (data.message || data.error)) ||
-      `Request failed: ${res.status} ${res.statusText}`;
-    throw new Error(msg);
+    throw new Error(data.error || "Signup failed");
   }
 
   return data;
-}
-
-// ---------- Auth ----------
-export async function register(email, password) {
-  return request("/auth/register", {
-    method: "POST",
-    body: { email, password },
-  });
 }
 
 export async function login(email, password) {
-  const data = await request("/auth/login", {
+  const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    body: { email, password },
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
   });
 
-  // backend returns { token }
-  if (data?.token) {
-    localStorage.setItem("token", data.token);
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Login failed");
   }
+
   return data;
 }
-
-export function logout() {
-  localStorage.removeItem("token");
-}
-
-export async function ping() {
-  return request("/ping");
-}
-
-
-// ---------- Notes (Protected) ----------
-export async function createNote({ title, content }) {
-    return request("/notes", {
-      method: "POST",
-      body: { title, content },
-    });
-  }
-  
-  export async function getNotes() {
-    return request("/notes");
-  }
-  
-  export async function deleteNote(id) {
-    return request(`/notes/${id}`, { method: "DELETE" });
-  }
