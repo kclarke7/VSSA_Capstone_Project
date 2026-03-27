@@ -11,7 +11,11 @@ export default function Login({ setUser }) {
 
     try {
       const data = await login(email, password);
-      setUser(data.token);
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      setUser(data.user);
     } catch (err) {
       alert(err.message || "Login failed");
     }
@@ -25,9 +29,11 @@ export default function Login({ setUser }) {
       <form onSubmit={handleLogin} className="auth-form">
         <input
           className="auth-input"
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
+          required
         />
 
         <input
@@ -36,6 +42,7 @@ export default function Login({ setUser }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
+          required
         />
 
         <button className="auth-button" type="submit">
