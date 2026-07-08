@@ -1,0 +1,10 @@
+Math Part 2
+
+Slope: Rate of change of a line
+Y-intercept: Where the line crosses the y-axis
+Quadratic Formula: x = (-b ± sqrt(b^2 - 4ac)) / (2a)
+Exponent Rule: a^m * a^n = a^(m+n)
+Distance Formula: d = sqrt((x2-x1)^2 + (y2-y1)^2)
+Function: A relation where each input has exactly one output
+Domain: Set of all possible x-values
+Range: Set of all possible y-values

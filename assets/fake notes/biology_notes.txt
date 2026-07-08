@@ -1,0 +1,22 @@
+Cell Biology
+
+Cell Types:
+- Prokaryotic: No nucleus (bacteria)
+- Eukaryotic: Has nucleus (plants, animals)
+
+Cell Organelles:
+- Nucleus: Contains DNA
+- Mitochondria: Produces energy (ATP)
+- Ribosomes: Protein synthesis
+- Endoplasmic Reticulum:
+  - Rough ER: Protein processing
+  - Smooth ER: Lipid synthesis
+
+Photosynthesis:
+- Occurs in chloroplasts
+- Equation:
+  CO2 + H2O + sunlight → glucose + oxygen
+
+Cellular Respiration:
+- Occurs in mitochondria
+- Produces ATP

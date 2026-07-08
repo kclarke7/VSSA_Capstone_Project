@@ -1,0 +1,10 @@
+Computer Science Part 2
+
+Stack: Last in, first out data structure
+Queue: First in, first out data structure
+Algorithm: Step-by-step procedure to solve a problem
+Variable: Named storage for data
+Loop: Repeats a block of code
+Function: Reusable block of code
+Compiler: Translates code into machine language
+Bug: Error in a program

@@ -1,0 +1,18 @@
+Math Notes
+
+Linear Equation: y = mx + b
+Slope: m in the equation y = mx + b
+Y-intercept: b in the equation y = mx + b
+
+Quadratic Equation: ax^2 + bx + c = 0
+Quadratic Formula: x = (-b ± sqrt(b^2 - 4ac)) / (2a)
+
+Derivative: Rate of change
+Power Rule: d/dx (x^n) = n(x^(n-1))
+
+Integral: Area under the curve
+
+Limit: Describes behavior as x approaches a value
+Function: A relation where each input has exactly one output
+Domain: Set of all possible x-values
+Range: Set of all possible y-values

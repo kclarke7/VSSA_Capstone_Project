@@ -1,0 +1,32 @@
+Data Structures & Algorithms
+
+Arrays:
+- Fixed size, contiguous memory
+- O(1) access time
+- O(n) insertion/deletion
+
+Linked Lists:
+- Dynamic size
+- Each node points to next
+- O(n) access time
+
+Stacks:
+- LIFO (Last In First Out)
+- Operations:
+  - push
+  - pop
+  - peek
+
+Queues:
+- FIFO (First In First Out)
+
+Big O Notation:
+- O(1): Constant time
+- O(log n): Logarithmic
+- O(n): Linear
+- O(n^2): Quadratic
+
+Sorting Algorithms:
+- Bubble Sort: O(n^2)
+- Merge Sort: O(n log n)
+- Quick Sort: Average O(n log n)

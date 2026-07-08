@@ -1,34 +1,47 @@
 import { useState } from "react";
-console.log("LOGIN FILE LOADED");
+import { login } from "../api";
+import "../styles/auth.css";
 
-export default function Login({setUser}) {
-const [email, setEmail] = useState("");
-const [password, setPassword] = useState("");
+export default function Login({ setUser }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-async function handleLogin(e) {
-e.preventDefault();
+  async function handleLogin(e) {
+    e.preventDefault();
 
-const res = await fetch("http://localhost:3000/auth/login", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ email, password }),
-});
+    try {
+      const data = await login(email, password);
+      setUser(data.token);
+    } catch (err) {
+      backalert(err.message || "Login failed");
+    }
+  }
 
-const data = await res.json();
-if (!res.ok) return alert(data.message || "Login failed");
+  return (
+    <>
+      <h1 className="auth-title">VSSA</h1>
+      <p className="auth-subtitle">Virtual Smart Study Assistant</p>
 
-// Save login (token/session)
-localStorage.setItem("token", data.token);
+      <form onSubmit={handleLogin} className="auth-form">
+        <input
+          className="auth-input"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+        />
 
-setUser(data.token);
-}
+        <input
+          className="auth-input"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+        />
 
-return (
-<form onSubmit={handleLogin}>
-<h2>Log In</h2>
-<input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email" />
-<input value={password} onChange={(e)=>setPassword(e.target.value)} type="password" placeholder="Password" />
-<button type="submit">Log In</button>
-</form>
-);
+        <button className="auth-button" type="submit">
+          Log In
+        </button>
+      </form>
+    </>
+  );
 }

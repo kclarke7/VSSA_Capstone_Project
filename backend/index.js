@@ -12,10 +12,27 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+function requireAuth(req, res, next) {
+try {
+const header = req.headers.authorization || "";
+const [type, token] = header.split(" ");
+
+if (type !== "Bearer" || !token) {
+return res.status(401).json({ message: "Missing or invalid Authorization header" });
+}
+
+const payload = jwt.verify(token, process.env.JWT_SECRET);
+req.user = payload;
+next();
+} catch (err) {
+return res.status(401).json({ message: "Unauthorized" });
+}
+}
+
 app.get("/", (req, res) => res.send("Backend running"));
 app.get("/ping", (req, res) => {
-    console.log("PING HIT");
-    res.json({ok: true});
+console.log("PING HIT");
+res.json({ ok: true });
 });
 
 async function ensureUsersTable() {
@@ -28,12 +45,41 @@ created_at TIMESTAMP DEFAULT NOW()
 );
 `);
 }
-ensureUsersTable().catch((e) => console.error("DB init error:", e));
+
+async function ensureNotesTable() {
+await pool.query(`
+CREATE TABLE IF NOT EXISTS notes (
+id SERIAL PRIMARY KEY,
+user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+title TEXT NOT NULL,
+content TEXT NOT NULL,
+subject TEXT DEFAULT 'General',
+created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+await pool.query(`
+ALTER TABLE notes
+ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'General';
+`);
+}
+
+(async () => {
+try {
+await ensureUsersTable();
+await ensureNotesTable();
+console.log("DB tables ensured ✅");
+} catch (e) {
+console.error("DB init error:", e);
+}
+})();
 
 app.post("/auth/register", async (req, res) => {
 try {
 const { email, password } = req.body;
-if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+if (!email || !password) {
+return res.status(400).json({ message: "Email and password required" });
+}
 
 const password_hash = await bcrypt.hash(password, 10);
 
@@ -55,9 +101,14 @@ return res.status(500).json({ message: "Server error" });
 app.post("/auth/login", async (req, res) => {
 try {
 const { email, password } = req.body;
-if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+if (!email || !password) {
+return res.status(400).json({ message: "Email and password required" });
+}
 
-const result = await pool.query("SELECT * FROM users WHERE email=$1", [email.toLowerCase()]);
+const result = await pool.query("SELECT * FROM users WHERE email=$1", [
+email.toLowerCase(),
+]);
+
 const user = result.rows[0];
 if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
@@ -71,6 +122,67 @@ process.env.JWT_SECRET,
 );
 
 return res.json({ token });
+} catch (err) {
+console.error(err);
+return res.status(500).json({ message: "Server error" });
+}
+});
+
+app.get("/notes", requireAuth, async (req, res) => {
+try {
+const userId = req.user.userId;
+
+const result = await pool.query(
+"SELECT id, title, content, subject, created_at FROM notes WHERE user_id=$1 ORDER BY created_at DESC",
+[userId]
+);
+
+return res.json({ notes: result.rows });
+} catch (err) {
+console.error(err);
+return res.status(500).json({ message: "Server error" });
+}
+});
+
+app.post("/notes", requireAuth, async (req, res) => {
+try {
+const userId = req.user.userId;
+const { title, content, subject } = req.body;
+
+if (!title || !content) {
+return res.status(400).json({ message: "title and content are required" });
+}
+
+const cleanSubject =
+typeof subject === "string" && subject.trim() ? subject.trim() : "General";
+
+const result = await pool.query(
+"INSERT INTO notes (user_id, title, content, subject) VALUES ($1, $2, $3, $4) RETURNING id, title, content, subject, created_at",
+[userId, title, content, cleanSubject]
+);
+
+return res.json({ note: result.rows[0] });
+} catch (err) {
+console.error(err);
+return res.status(500).json({ message: "Server error" });
+}
+});
+
+app.delete("/notes/:id", requireAuth, async (req, res) => {
+try {
+const userId = req.user.userId;
+const noteId = Number(req.params.id);
+
+const result = await pool.query(
+"DELETE FROM notes WHERE id=$1 AND user_id=$2 RETURNING id",
+[noteId, userId]
+);
+
+if (result.rowCount === 0) {
+return res.status(404).json({ message: "Note not found" });
+}
+
+return res.json({ ok: true });
 } catch (err) {
 console.error(err);
 return res.status(500).json({ message: "Server error" });
